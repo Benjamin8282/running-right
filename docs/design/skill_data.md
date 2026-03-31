@@ -346,7 +346,7 @@ public class ComboHitData
 | 항목 | 공식 | 설명 |
 |------|------|------|
 | 대미지 배율 | `1.0 + (level - 1) * 0.08` | 레벨당 8% 대미지 증가 |
-| 쿨타임 감소 | `baseCooldown * (1 - level * 0.015)` | 레벨당 1.5% 쿨타임 감소 (최소 50%) |
+| 쿨타임 감소 | `baseCooldown * (1 - (level - 1) * 0.015)` | 레벨당 1.5% 쿨타임 감소 (최소 50%) |
 | 골드 비용 | `baseGoldCost * (1.18 ^ (level - 1))` | 레벨당 18% 비용 증가 |
 | 구슬 조각 비용 | 레벨 5부터 추가, 레벨 10부터 2배 | 후반 강화에 희귀 재화 필요 |
 
@@ -898,7 +898,7 @@ public class SkillData : ScriptableObject
     /// </summary>
     public float GetCooldown(int level)
     {
-        float reduction = Mathf.Min(level * cooldownReductionPerLevel, maxCooldownReduction);
+        float reduction = Mathf.Min((level - 1) * cooldownReductionPerLevel, maxCooldownReduction);
         return cooldown * (1f - reduction);
     }
 
@@ -1084,3 +1084,4 @@ Assets/
 | 1.0 | 2026-03-31 | 초안 작성 |
 | 1.1 | 2026-03-31 | 수치 정합 (골드 수입 참조값 수정) |
 | 1.2 | 2026-03-31 | 포맷 표준화 |
+| 1.3 | 2026-03-31 | 쿨타임 감소 공식 텍스트 오류 수정 (level → level-1) |

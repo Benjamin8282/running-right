@@ -2,7 +2,7 @@
 
 > "오른쪽 달리기" (Running Right) - 몬스터 시스템 상세 설계
 > 작성일: 2026-03-31
-> 버전: 1.0
+> 버전: 1.3
 > 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
@@ -17,7 +17,8 @@
 6. [드랍 테이블](#6-드랍-테이블)
 7. [스폰 규칙](#7-스폰-규칙)
 8. [행동 패턴(AI)](#8-행동-패턴ai)
-9. [ScriptableObject 스키마](#9-scriptableobject-스키마)
+9. [접촉 데미지 시스템](#9-접촉-데미지-시스템)
+10. [ScriptableObject 스키마](#10-scriptableobject-스키마)
 
 ---
 
@@ -739,9 +740,50 @@ M M M M M       M M          M M M        M     M          →P←
 
 ---
 
-## 9. ScriptableObject 스키마
+## 9. 접촉 데미지 시스템
 
-### 9-1. MonsterData (기본 몬스터 데이터)
+### 9-1. 개념
+
+몬스터는 플레이어 캐릭터와 겹쳐 있는 동안 **초당 지속 피해(접촉 데미지)**를 준다. 별도의 공격 모션 없이, 물리적 오버랩이 유지되는 한 매초 자동으로 데미지가 적용된다.
+
+### 9-2. 기본 수치
+
+| 파라미터 | 값 | 설명 |
+|---------|-----|------|
+| 기본 접촉 데미지 | **2 /초** | 스테이지 1 기준, 캐릭터와 겹쳐 있는 동안 초당 피해 |
+
+### 9-3. 스케일링 공식
+
+```
+ContactDmg(stage) = 2 × (1 + (stage - 1) × 0.05)
+```
+
+> `stage`는 1-indexed. 스케일링 계수 0.05는 HP/ATK 스케일링(0.10~0.15)보다 완만하여,
+> 초반에는 위협이 낮지만 후반으로 갈수록 무시할 수 없는 수준으로 증가한다.
+
+### 9-4. 스테이지별 접촉 데미지 예시
+
+| 스테이지 | 공식 | 접촉 데미지 (/초) |
+|---------|------|------------------|
+| 1 | 2 × (1 + 0 × 0.05) | **2.0** |
+| 10 | 2 × (1 + 9 × 0.05) | **2.9** |
+| 50 | 2 × (1 + 49 × 0.05) | **6.9** |
+| 100 | 2 × (1 + 99 × 0.05) | **11.9** |
+
+### 9-5. 설계 의도
+
+- 강화하지 않으면 후반에 체력이 급격히 줄어 사망 → **강화 동기** 부여
+- 캐릭터 HP 100 기준, 스테이지 1에서 접촉 데미지만으로 약 50초 생존 가능 → 충분히 여유롭지만 방치 시 언젠가 사망
+- 여러 몬스터가 동시에 접촉하면 피해가 중첩되어 위험도 급상승
+- 플레이어에게 HP 강화, 스킬 활용, 전생(Prestige) 등 성장 수단을 자연스럽게 유도
+
+> **참고:** 캐릭터 HP 및 사망 시스템은 `character_growth.md` 참조
+
+---
+
+## 10. ScriptableObject 스키마
+
+### 10-1. MonsterData (기본 몬스터 데이터)
 
 ```csharp
 [CreateAssetMenu(fileName = "NewMonster", menuName = "RunningRight/MonsterData")]
@@ -759,6 +801,10 @@ public class MonsterData : ScriptableObject
     public float moveSpeed;            // 이동 속도 (units/s)
     public float attackRange;          // 공격 사거리 (units)
     public float attackSpeed;          // 공격 속도 (attacks/s)
+
+    [Header("접촉 데미지")]
+    public float contactDamage = 2f;           // 초당 접촉 피해 (기본값 2)
+    public float contactDamageScaleFactor = 0.05f;  // 스테이지당 접촉 데미지 증가 계수
 
     [Header("물리")]
     [Range(0f, 1f)]
@@ -791,7 +837,7 @@ public class MonsterData : ScriptableObject
 }
 ```
 
-### 9-2. MonsterGrade (등급 열거형)
+### 10-2. MonsterGrade (등급 열거형)
 
 ```csharp
 public enum MonsterGrade
@@ -802,7 +848,7 @@ public enum MonsterGrade
 }
 ```
 
-### 9-3. EliteMonsterData (정예 전용 확장)
+### 10-3. EliteMonsterData (정예 전용 확장)
 
 ```csharp
 [CreateAssetMenu(fileName = "NewEliteMonster", menuName = "RunningRight/EliteMonsterData")]
@@ -818,7 +864,7 @@ public class EliteMonsterData : MonsterData
 }
 ```
 
-### 9-4. SpecialAttackPattern (특수 공격 패턴 데이터)
+### 10-4. SpecialAttackPattern (특수 공격 패턴 데이터)
 
 ```csharp
 [System.Serializable]
@@ -857,7 +903,7 @@ public class SpecialAttackPattern
 }
 ```
 
-### 9-5. 지원 열거형
+### 10-5. 지원 열거형
 
 ```csharp
 public enum SpecialAttackType
@@ -882,7 +928,7 @@ public enum TriggerCondition
 }
 ```
 
-### 9-6. BossOrbData (보스 구슬 전용 확장)
+### 10-6. BossOrbData (보스 구슬 전용 확장)
 
 ```csharp
 [CreateAssetMenu(fileName = "NewBossOrb", menuName = "RunningRight/BossOrbData")]
@@ -931,7 +977,7 @@ public class OrbAppearance
 }
 ```
 
-### 9-7. MonsterSpawnConfig (스폰 설정)
+### 10-7. MonsterSpawnConfig (스폰 설정)
 
 ```csharp
 [CreateAssetMenu(fileName = "SpawnConfig", menuName = "RunningRight/MonsterSpawnConfig")]
@@ -988,7 +1034,7 @@ public enum FormationType
 }
 ```
 
-### 9-8. ScriptableObject 파일 구조
+### 10-8. ScriptableObject 파일 구조
 
 ```
 Assets/ScriptableObjects/
@@ -1049,3 +1095,4 @@ Assets/ScriptableObjects/
 | 1.0 | 2026-03-31 | 초안 작성 |
 | 1.1 | 2026-03-31 | 10회 리뷰 기반 수치 정합 (보스 HP, 골렘 HP, 해금 순서 등) |
 | 1.2 | 2026-03-31 | 코어 루프 정합 (정예방 체계, 보스 호위 몬스터) |
+| 1.3 | 2026-03-31 | 접촉 데미지 시스템 섹션 추가 (01_core_loop.md 3-1절에서 이관), MonsterData SO에 contactDamage/contactDamageScaleFactor 필드 추가 |

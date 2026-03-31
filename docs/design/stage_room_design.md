@@ -2,7 +2,7 @@
 
 > "오른쪽 달리기" (Running Right) - 스테이지 및 방 시스템 상세 설계
 > 작성일: 2026-03-31
-> 버전: 1.0
+> 버전: 1.3
 > 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
@@ -17,7 +17,8 @@
 6. [방 전환 연출](#6-방-전환-연출)
 7. [맵 생성 규칙](#7-맵-생성-규칙)
 8. [환경 테마](#8-환경-테마)
-9. [ScriptableObject 스키마](#9-scriptableobject-스키마)
+9. [카메라 시스템](#9-카메라-시스템)
+10. [ScriptableObject 스키마](#10-scriptableobject-스키마)
 
 ---
 
@@ -742,9 +743,81 @@ themeIndex = floor((stage - 1) / 10) % 5
 
 ---
 
-## 9. ScriptableObject 스키마
+## 9. 카메라 시스템
 
-### 9-1. StageData (ScriptableObject)
+### 9-1. Cinemachine 2D 설정
+
+| 파라미터 | 값 | 설명 |
+|---------|-----|------|
+| Follow Offset X | +2.0 units | 캐릭터보다 살짝 앞을 비춤 (진행 방향 여유) |
+| Follow Offset Y | 0 | 수평 고정 |
+| Dead Zone Width | 0.1 | 약간의 놀이 허용 |
+| Damping X | 0.3 | 부드러운 추적 (너무 딱딱하지 않게) |
+| Damping Y | 0 | 수직 이동 없음 |
+| Orthographic Size | 5.0 | 16:9 기준 화면에 10 units 높이 표시 |
+
+**왜 Offset X +2.0인가:** 캐릭터가 화면 좌측에 위치해야 전방의 몬스터 무리가 잘 보인다. DNF도 진행 방향에 시야를 더 할당한다.
+
+### 9-2. 화면 구성
+
+```
+카메라 뷰 (Orthographic Size 5, 16:9 = 약 17.8u x 10u)
+
+┌──────────────────────────────────────────┐
+│                                          │
+│  [캐릭터]           [몬스터들]            │
+│  ← 약 1/3 →  ← 약 2/3 전방 시야 →       │
+│                                          │
+└──────────────────────────────────────────┘
+```
+
+- 캐릭터는 화면 좌측 약 1/3 지점에 위치
+- 나머지 2/3는 진행 방향(오른쪽)의 전방 시야로 활용
+- 뷰포트 너비 약 17.8 유닛 (1920x1080, Orthographic Size 5 기준)
+
+### 9-3. 카메라 컨파이너 (방 경계 제한)
+
+- `CinemachineConfiner2D`를 사용하여 카메라를 현재 방 범위 내로 제한
+- 방 전환 시 Confiner 영역을 다음 방으로 확장 (6-1절 방 전환 연출 참조)
+- 부드러운 카메라 이동: Damping X 0.5, Damping Y 0.3 (방 전환 시)
+
+### 9-4. 카메라 셰이크 연동
+
+| 상황 | 강도 | 지속 시간 |
+|------|------|----------|
+| 일반 타격 | 없음 | - |
+| 치명타 | 0.1 units | 0.1초 |
+| 3타 마무리 | 0.15 units | 0.15초 |
+| 돌풍베기 (광역기) | 0.2 units | 0.2초 |
+| 구슬 파괴 | 0.4 units | 0.5초 |
+| 골렘 서버 DDoS 스톰프 | 0.3 units | - |
+
+> 히트스톱과 셰이크의 관계: 히트스톱(`Time.timeScale = 0`) 복구 후 셰이크가 발동하거나,
+> Cinemachine 셰이크에 `IgnoreTimeScale = true` 설정으로 히트스톱 중에도 동작 가능
+
+### 9-5. Lookahead 설정
+
+| 파라미터 | 값 | 설명 |
+|---------|-----|------|
+| Lookahead Time | 0 | 예측 이동 비활성화 (일정 속도 횡스크롤이므로 불필요) |
+| Lookahead Smoothing | 0 | 비활성화 |
+
+> 본 게임은 캐릭터가 일정한 속도로 오른쪽으로 달리므로, Follow Offset X +2.0으로 충분히
+> 전방 시야를 확보한다. Lookahead는 방향/속도 변화가 잦은 게임에 적합하므로 비활성화.
+
+### 9-6. 보스방 카메라 연출
+
+| 타이밍 | 카메라 동작 |
+|--------|-----------|
+| 보스방 진입 시 | 줌인 (Orthographic Size 5.0 → 3.5, 0.5초) → 구슬 클로즈업 |
+| 전투 시작 | 줌아웃 (3.5 → 5.0, 0.3초) → 일반 추적 복귀 |
+| 구슬 파괴 시 | 줌인 1.2배 (0.3초) → 폭발 후 셰이크 (0.4 units, 0.5초) → 화이트 플래시 |
+
+---
+
+## 10. ScriptableObject 스키마
+
+### 10-1. StageData (ScriptableObject)
 
 ```csharp
 [CreateAssetMenu(fileName = "StageData", menuName = "RunningRight/StageData")]
@@ -787,7 +860,7 @@ public class StageData : ScriptableObject
 }
 ```
 
-### 9-2. RoomData (런타임 생성 데이터)
+### 10-2. RoomData (런타임 생성 데이터)
 
 ```csharp
 [System.Serializable]
@@ -813,7 +886,7 @@ public enum RoomType
 }
 ```
 
-### 9-3. SpawnPointData
+### 10-3. SpawnPointData
 
 ```csharp
 [System.Serializable]
@@ -835,7 +908,7 @@ public enum MonsterType
 }
 ```
 
-### 9-4. ThemeData (ScriptableObject)
+### 10-4. ThemeData (ScriptableObject)
 
 ```csharp
 [CreateAssetMenu(fileName = "ThemeData", menuName = "RunningRight/ThemeData")]
@@ -866,7 +939,7 @@ public class ThemeData : ScriptableObject
 }
 ```
 
-### 9-5. StageManager 상태머신
+### 10-5. StageManager 상태머신
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -919,7 +992,7 @@ public class ThemeData : ScriptableObject
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 9-6. StageManager 핵심 필드
+### 10-6. StageManager 핵심 필드
 
 ```csharp
 public class StageManager : MonoBehaviour
@@ -966,7 +1039,7 @@ public enum StageState
 }
 ```
 
-### 9-7. RoomManager 핵심 필드
+### 10-7. RoomManager 핵심 필드
 
 ```csharp
 public class RoomManager : MonoBehaviour
@@ -1006,7 +1079,7 @@ public class RoomManager : MonoBehaviour
 }
 ```
 
-### 9-8. 저장 데이터 (SaveData 연동)
+### 10-8. 저장 데이터 (SaveData 연동)
 
 ```csharp
 [System.Serializable]
@@ -1055,3 +1128,4 @@ public class StageSaveData
 | 1.0 | 2026-03-31 | 초안 작성 |
 | 1.1 | 2026-03-31 | 수치 정합 (baseHP 참조, 구슬 조각 공식, 정예 해금) |
 | 1.2 | 2026-03-31 | 포맷 표준화 |
+| 1.3 | 2026-03-31 | 카메라 시스템 섹션 추가 (01_core_loop.md 7절에서 이관): Cinemachine 설정, 컨파이너, 셰이크, Lookahead, 보스방 카메라 연출 |
