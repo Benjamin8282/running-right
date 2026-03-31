@@ -123,7 +123,7 @@ CharacterStats (ScriptableObject)
 - 스테이지에 따라 HP/공격력 스케일링 공식:
 
 ```
-MonsterHP = BaseHP * (1 + stage * 0.15)
+MonsterHP = BaseHP * (1 + (stage - 1) * 0.15)  // stage 1-indexed, Stage 1 = BaseHP
 ```
 
 ### 2-4. 타격감 연출
