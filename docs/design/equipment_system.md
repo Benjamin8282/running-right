@@ -1,7 +1,9 @@
 # 장비 시스템 설계 문서
 
-> "오른쪽 달리기" 장비/아이템 시스템 상세 설계
+> "오른쪽 달리기" (Running Right) - 장비/아이템 시스템 상세 설계
 > 작성일: 2026-03-31
+> 버전: 1.0
+> 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
@@ -48,11 +50,11 @@
 장비 스탯은 캐릭터 기본 스탯에 **가산(additive)** 방식으로 적용된다.
 
 ```
-최종_ATK = Base_ATK + Sum(장비_ATK) + Sum(세트효과_ATK) + 강화_보너스_ATK
-최종_CRIT_RATE = Base_CRIT_RATE + Sum(장비_CRIT_RATE)  // 상한 80%
-최종_CRIT_DMG = Base_CRIT_DMG + Sum(장비_CRIT_DMG)
-최종_ATK_SPEED = Base_ATK_SPEED + Sum(장비_ATK_SPEED)  // 상한 300%
-최종_MOVE_SPEED = Base_MOVE_SPEED + Sum(장비_MOVE_SPEED)
+finalATK = baseATK + Sum(equipATK) + Sum(setEffectATK) + enhanceBonusATK
+finalCRIT_RATE = baseCRIT_RATE + Sum(equipCRIT_RATE)  // 상한 80%
+finalCRIT_DMG = baseCRIT_DMG + Sum(equipCRIT_DMG)
+finalATK_SPEED = baseATK_SPEED + Sum(equipATK_SPEED)  // 상한 300%
+finalMOVE_SPEED = baseMOVE_SPEED + Sum(equipMOVE_SPEED)
 ```
 
 스탯 상한(Cap):
@@ -79,7 +81,7 @@
 장비의 최종 스탯은 다음과 같이 계산된다:
 
 ```
-장비_스탯 = BaseStat * Random(배율_최소, 배율_최대)
+equipStat = BaseStat * Random(minMultiplier, maxMultiplier)
 ```
 
 예시: `Common` 무기의 BaseStat ATK가 10이라면, 최종 ATK = `10 * 1.0 = 10`
@@ -271,7 +273,7 @@
 ### 5-2. 강화 스탯 계산
 
 ```
-강화_보너스 = BaseStat * Sum(각 단계 스탯 증가율)
+enhanceBonus = BaseStat * Sum(enhanceRatePerLevel)
 ```
 
 예시: ATK 10짜리 Common 무기를 +5까지 강화 시
@@ -363,14 +365,14 @@
 **자동 장착 로직:**
 
 ```
-장비_점수(EquipmentScore) =
+equipmentScore =
     (ATK * 1.0) +
     (HP * 0.3) +
     (ATK_SPEED * 50) +      // %를 소수로 변환 후 곱셈 (0.05 → 2.5)
     (CRIT_RATE * 80) +      // %를 소수로 변환 후 곱셈
     (CRIT_DMG * 40) +       // %를 소수로 변환 후 곱셈
     (MOVE_SPEED * 30) +     // %를 소수로 변환 후 곱셈
-    세트효과_가중치           // 세트 완성 시 보너스 점수 +100
+    setEffectWeight           // 세트 완성 시 보너스 점수 +100
 ```
 
 - 새 장비 획득 시 현재 장착 장비와 점수 비교
@@ -468,7 +470,7 @@
 에디터에서 장비 원본 데이터를 정의하는 ScriptableObject.
 
 ```csharp
-[CreateAssetMenu(fileName = "NewEquipment", menuName = "Data/EquipmentData")]
+[CreateAssetMenu(fileName = "NewEquipment", menuName = "RunningRight/EquipmentData")]
 public class EquipmentData : ScriptableObject
 {
     [Header("기본 정보")]
@@ -585,7 +587,7 @@ public enum StatType
 ### 9-4. EquipmentSetData (세트 정의 - ScriptableObject)
 
 ```csharp
-[CreateAssetMenu(fileName = "NewEquipmentSet", menuName = "Data/EquipmentSetData")]
+[CreateAssetMenu(fileName = "NewEquipmentSet", menuName = "RunningRight/EquipmentSetData")]
 public class EquipmentSetData : ScriptableObject
 {
     public string setId;               // "arad_fashion"
@@ -625,7 +627,7 @@ public class EquipmentSaveData
 
 ---
 
-## 부록: 밸런스 노트
+## 부록 A: 밸런스 노트
 
 ### 장비 파워 기여도 목표
 
@@ -647,5 +649,10 @@ public class EquipmentSaveData
 
 ---
 
-> 이 문서는 개발 진행에 따라 지속적으로 업데이트됩니다.
-> 밸런스 수치는 플레이테스트 결과에 따라 조정될 수 있습니다.
+## 변경 이력
+
+| 버전 | 날짜 | 내용 |
+|------|------|------|
+| 1.0 | 2026-03-31 | 초안 작성 |
+| 1.1 | 2026-03-31 | 수치 정합 (구슬 조각 공식 통일) |
+| 1.2 | 2026-03-31 | 포맷 표준화 |

@@ -1,7 +1,9 @@
-# 스테이지 / 방 설계 문서
+# 스테이지/방 설계 문서
 
-> "오른쪽 달리기" 스테이지 및 방(Room) 시스템 상세 설계
+> "오른쪽 달리기" (Running Right) - 스테이지 및 방 시스템 상세 설계
 > 작성일: 2026-03-31
+> 버전: 1.0
+> 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
@@ -15,7 +17,7 @@
 6. [방 전환 연출](#6-방-전환-연출)
 7. [맵 생성 규칙](#7-맵-생성-규칙)
 8. [환경 테마](#8-환경-테마)
-9. [StageManager / RoomManager 데이터 스키마](#9-stagemanager--roommanager-데이터-스키마)
+9. [ScriptableObject 스키마](#9-scriptableobject-스키마)
 
 ---
 
@@ -214,7 +216,7 @@ Game (무한 반복)
 
 ### 3-2. 진입/출구 트리거
 
-```csharp
+```
 // 진입 트리거 (방 시작점)
 EntryTrigger:
   - 위치: x = 0 (방 시작)
@@ -740,7 +742,7 @@ themeIndex = floor((stage - 1) / 10) % 5
 
 ---
 
-## 9. StageManager / RoomManager 데이터 스키마
+## 9. ScriptableObject 스키마
 
 ### 9-1. StageData (ScriptableObject)
 
@@ -1023,7 +1025,7 @@ public class StageSaveData
 
 ---
 
-## 부록: 핵심 수치 요약표
+## 부록 A: 핵심 수치 요약표
 
 | 항목 | 공식 / 값 |
 |------|----------|
@@ -1043,3 +1045,13 @@ public class StageSaveData
 | 정예방 클리어 시간 (적정) | 15~25초 |
 | 보스방 클리어 시간 (적정) | 20~40초 |
 | 스테이지 클리어 시간 (적정) | 1.5~4분 |
+
+---
+
+## 변경 이력
+
+| 버전 | 날짜 | 내용 |
+|------|------|------|
+| 1.0 | 2026-03-31 | 초안 작성 |
+| 1.1 | 2026-03-31 | 수치 정합 (baseHP 참조, 구슬 조각 공식, 정예 해금) |
+| 1.2 | 2026-03-31 | 포맷 표준화 |

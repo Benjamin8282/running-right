@@ -1,8 +1,9 @@
 # 방치형(Idle) 시스템 설계 문서
 
-> 오른쪽 달리기 - Phase 4 방치형 시스템 상세 설계
+> "오른쪽 달리기" (Running Right) - 방치형 시스템 상세 설계
 > 작성일: 2026-03-31
 > 버전: 1.0
+> 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
@@ -24,11 +25,11 @@
 
 ## 1. 방치 시스템 개요
 
-### 1.1 설계 철학
+### 1-1. 설계 철학
 
 방치형 시스템의 핵심 목표는 **"플레이하지 않아도 성장하지만, 플레이하면 더 빨리 성장한다"**는 느낌을 주는 것이다. 플레이어가 앱을 끄고 돌아왔을 때 보상이 쌓여 있어야 복귀 동기가 생기고, 동시에 직접 플레이하는 것보다 보상이 적어야 능동적 플레이 의욕이 유지된다.
 
-### 1.2 앱 상태별 동작 정의
+### 1-2. 앱 상태별 동작 정의
 
 게임은 앱의 상태에 따라 세 가지 모드로 동작한다.
 
@@ -57,7 +58,7 @@
 - 복귀 시 오프라인 보상 공식에 따라 일괄 보상 지급
 - 보상 효율 50%
 
-### 1.3 상태 전환 흐름
+### 1-3. 상태 전환 흐름
 
 ```
 [활성] ──홈 버튼──→ [최소화] ──OS 종료──→ [종료]
@@ -68,7 +69,7 @@
                   (오프라인 보상 팝업 표시)
 ```
 
-### 1.4 핵심 타이밍 이벤트
+### 1-4. 핵심 타이밍 이벤트
 
 | 이벤트 | 시점 | 동작 |
 |--------|------|------|
@@ -81,7 +82,7 @@
 
 ## 2. 오프라인 보상 계산
 
-### 2.1 기본 공식
+### 2-1. 기본 공식
 
 ```
 오프라인 골드 = goldPerSecond * elapsedSeconds * efficiencyCoefficient
@@ -95,7 +96,7 @@
 | `elapsedSeconds` | 오프라인 경과 시간 (초) | `min(실제 경과 시간, maxOfflineSeconds)` |
 | `efficiencyCoefficient` | 오프라인 효율 계수 | 기본 0.5 (종료), 0.8 (최소화) |
 
-### 2.2 goldPerSecond 산출
+### 2-2. goldPerSecond 산출
 
 `goldPerSecond`는 플레이어의 현재 전투력과 스테이지 난이도를 기반으로 산출한다.
 
@@ -107,8 +108,8 @@ goldPerSecond = (monstersPerRoom * goldPerMonster * roomClearRate) + bossGoldPer
 
 | 변수 | 설명 | 예시 값 |
 |------|------|---------|
-| `monstersPerRoom` | 방당 몬스터 수 | 5~8마리 |
-| `goldPerMonster` | 몬스터 1마리당 골드 보상 | `BaseGold * (1 + stage * 0.1)` |
+| `monstersPerRoom` | 방당 몬스터 수 | 3~8마리 |
+| `goldPerMonster` | 몬스터 1마리당 골드 보상 | `baseGold * (1 + stage * 0.12)^1.15` (baseGold = 11, 몬스터 5종 평균) |
 | `roomClearRate` | 초당 방 클리어 횟수 | `playerDPS / roomTotalHP` (방 전체 몬스터 HP 합계) |
 | `bossGoldPerClear` | 구슬 보스 클리어 시 골드 | `goldPerMonster * 10` |
 | `bossClearRate` | 초당 보스 클리어 횟수 | `playerDPS / bossHP` (스테이지당 1회) |
@@ -118,14 +119,14 @@ goldPerSecond = (monstersPerRoom * goldPerMonster * roomClearRate) + bossGoldPer
 ```csharp
 float CalculateGoldPerSecond(int currentStage, float playerDPS)
 {
-    // 스테이지별 몬스터 기본 HP
-    float monsterHP = baseMonsterHP * (1f + currentStage * 0.15f);
+    // 스테이지별 몬스터 기본 HP (57 = 몬스터 5종 평균, 개별 값은 monster_data.md 참조)
+    float monsterHP = baseMonsterHP * (1f + currentStage * 0.15f); // baseMonsterHP = 57
 
-    // 스테이지별 몬스터 골드 보상
-    float goldPerMonster = baseGoldDrop * (1f + currentStage * 0.1f);
+    // 스테이지별 몬스터 골드 보상 (baseGoldDrop = 11, 몬스터 5종 평균)
+    float goldPerMonster = baseGoldDrop * Mathf.Pow(1f + currentStage * 0.12f, 1.15f);
 
     // 방당 총 몬스터 HP
-    int monstersPerRoom = Mathf.Min(5 + currentStage / 10, 8);
+    int monstersPerRoom = Mathf.Min(3 + currentStage / 15, 8);
     float roomTotalHP = monsterHP * monstersPerRoom;
 
     // 방 클리어 소요 시간 (초)
@@ -141,40 +142,40 @@ float CalculateGoldPerSecond(int currentStage, float playerDPS)
 }
 ```
 
-### 2.3 구체적 계산 예시
+### 2-3. 구체적 계산 예시
 
 **기준 조건:**
 - 현재 스테이지: 50
 - playerDPS: 500
-- baseMonsterHP: 100
-- baseGoldDrop: 10
-- 방당 몬스터 수: 8마리
+- baseMonsterHP: 57 (몬스터 5종 평균, 개별 값은 monster_data.md 참조)
+- baseGoldDrop: 11 (몬스터 5종 평균)
+- 방당 몬스터 수: min(3 + floor(50/15), 8) = 6마리
 - 효율 계수: 0.5 (종료 상태)
 
 **변수 산출:**
 ```
-monsterHP = 100 * (1 + 50 * 0.15) = 100 * 8.5 = 850
-goldPerMonster = 10 * (1 + 50 * 0.1) = 10 * 6.0 = 60
-roomTotalHP = 850 * 8 = 6,800
-roomClearTime = 6,800 / 500 = 13.6초
-totalRoomTime = 13.6 + 2 = 15.6초
-goldPerRoom = 60 * 8 = 480
-goldPerSecond = 480 / 15.6 = 30.77 골드/초
+monsterHP = 57 * (1 + 50 * 0.15) = 57 * 8.5 = 484.5
+goldPerMonster = 11 * (1 + 50 * 0.12)^1.15 = 11 * 7.0^1.15 ≈ 11 * 9.37 = 103.10
+roomTotalHP = 484.5 * 6 = 2,907
+roomClearTime = 2,907 / 500 = 5.81초
+totalRoomTime = 5.81 + 2 = 7.81초
+goldPerRoom = 103.10 * 6 = 618.60
+goldPerSecond = 618.60 / 7.81 = 79.21 골드/초
 ```
 
 #### 시간별 오프라인 보상표
 
 | 오프라인 시간 | 경과 초 | 공식 | 오프라인 골드 (효율 50%) | 광고 2배 적용 시 |
 |--------------|---------|------|------------------------|-----------------|
-| **1시간** | 3,600 | 30.77 * 3,600 * 0.5 | **55,386** | **110,772** |
-| **4시간** | 14,400 | 30.77 * 14,400 * 0.5 | **221,544** | **443,088** |
-| **8시간** | 28,800 | 30.77 * 28,800 * 0.5 | **443,088** | **886,176** |
-| **12시간** | 43,200 | 30.77 * 43,200 * 0.5 | **664,632** | **1,329,264** |
-| **24시간** (상한 적용 시) | 43,200 | 12시간 상한 적용 | **664,632** | **1,329,264** |
+| **1시간** | 3,600 | 79.21 * 3,600 * 0.5 | **142,578** | **285,156** |
+| **4시간** | 14,400 | 79.21 * 14,400 * 0.5 | **570,312** | **1,140,624** |
+| **8시간** | 28,800 | 79.21 * 28,800 * 0.5 | **1,140,624** | **2,281,248** |
+| **12시간** | 43,200 | 79.21 * 43,200 * 0.5 | **1,710,936** | **3,421,872** |
+| **24시간** (상한 적용 시) | 43,200 | 12시간 상한 적용 | **1,710,936** | **3,421,872** |
 
 > **참고:** 24시간 오프라인이어도 12시간 상한이 적용되어 12시간과 동일한 보상을 받는다. 상한 설계에 대해서는 [3. 오프라인 시간 상한](#3-오프라인-시간-상한) 참조.
 
-### 2.4 엣지 케이스 처리
+### 2-4. 엣지 케이스 처리
 
 | 상황 | 처리 방법 |
 |------|-----------|
@@ -189,14 +190,14 @@ goldPerSecond = 480 / 15.6 = 30.77 골드/초
 
 ## 3. 오프라인 시간 상한
 
-### 3.1 상한 시간: 12시간 (43,200초)
+### 3-1. 상한 시간: 12시간 (43,200초)
 
 ```csharp
 const int MAX_OFFLINE_SECONDS = 43200; // 12시간
 float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 ```
 
-### 3.2 12시간 상한 선택 근거
+### 3-2. 12시간 상한 선택 근거
 
 #### 비교 분석
 
@@ -215,7 +216,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 4. **푸시 알림 연계:** "보상이 가득 찼습니다!" 알림을 12시간 뒤에 보내 자연스러운 복귀를 유도한다.
 5. **업계 기준 부합:** 대부분의 방치형 게임 (AFK Arena, Idle Heroes 등)이 12~24시간 상한을 사용한다.
 
-### 3.3 상한 확장 시스템 (향후 고려)
+### 3-3. 상한 확장 시스템 (향후 고려)
 
 상한 시간을 늘려주는 영구 업그레이드를 통해 추가 성장 축을 제공할 수 있다.
 
@@ -231,7 +232,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 
 ## 4. 효율 계수 설계
 
-### 4.1 효율 계수 정의
+### 4-1. 효율 계수 정의
 
 효율 계수(Efficiency Coefficient)는 오프라인 상태에서의 보상이 온라인 대비 어느 정도의 비율로 지급되는지를 결정하는 핵심 밸런스 파라미터다.
 
@@ -239,7 +240,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 오프라인 보상 = 온라인 보상 * 효율 계수
 ```
 
-### 4.2 계수별 비교 분석
+### 4-2. 계수별 비교 분석
 
 #### 30% 효율 (`efficiencyCoefficient = 0.3`)
 
@@ -274,7 +275,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 | **적합 장르** | 순수 방치형 (클릭만으로 진행되는 게임) |
 | **결론** | 직접 플레이 인센티브가 약해 액션 게임에는 부적합. "굳이 켜서 할 필요가 없네" 문제. |
 
-### 4.3 50% 채택 사유 요약
+### 4-3. 50% 채택 사유 요약
 
 1. **심리적 앵커:** "절반"이라는 수치는 직관적이고 공정하게 느껴진다.
 2. **능동 플레이 보호:** 직접 플레이하는 유저는 2배 효율을 누리므로 플레이 동기가 유지된다.
@@ -282,7 +283,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 4. **업계 검증:** AFK Arena(50%), Idle Heroes(50~60%), 클래시 로얄(오프라인 없음) 등 성공적인 방치형 게임들이 40~60% 범위를 사용한다.
 5. **밸런스 조절 용이:** 향후 VIP 시스템이나 특수 버프로 효율 계수를 올릴 수 있는 성장 축을 제공한다.
 
-### 4.4 효율 계수 보너스 시스템 (향후)
+### 4-4. 효율 계수 보너스 시스템 (향후)
 
 기본 50%에 아래 보너스가 가산된다 (최대 80%, 100% 초과 불가).
 
@@ -297,7 +298,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 
 ## 5. 오프라인 보상 종류
 
-### 5.1 보상 매트릭스
+### 5-1. 보상 매트릭스
 
 | 보상 종류 | 오프라인 지급 여부 | 효율 | 근거 |
 |-----------|-------------------|------|------|
@@ -309,7 +310,7 @@ float clampedSeconds = Mathf.Min(elapsedSeconds, MAX_OFFLINE_SECONDS);
 | **스킬 경험치** | X | 0% | 스킬 사용 기반이므로 오프라인 지급 부적절 |
 | **업적 진행도** | X | 0% | 특정 행동 기반이므로 오프라인 불가 |
 
-### 5.2 보상별 상세 설계
+### 5-2. 보상별 상세 설계
 
 #### 골드 (주요 보상)
 
@@ -342,7 +343,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 - 레벨업이 발생하는 경우 레벨업 처리 후 보상 팝업에 "레벨업!" 표시
 - 한 번에 여러 레벨을 올라가는 경우 최종 레벨만 표시 (중간 과정 스킵)
 
-### 5.3 보상 지급 순서
+### 5-3. 보상 지급 순서
 
 1. 경과 시간 계산
 2. 골드 계산 및 지급
@@ -355,7 +356,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 
 ## 6. 복귀 팝업 UI 명세
 
-### 6.1 팝업 레이아웃
+### 6-1. 팝업 레이아웃
 
 ```
 ┌──────────────────────────────────────────┐
@@ -368,7 +369,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 │     ⏱ 오프라인 시간: 8시간 23분          │
 │                                          │
 │  ┌────────────────────────────────────┐  │
-│  │  💰 골드         +443,088         │  │
+│  │  💰 골드         +1,140,624       │  │
 │  │  🔮 구슬 조각    +12              │  │
 │  │  ⭐ 경험치       +28,500          │  │
 │  │  📈 레벨업!      Lv.34 → Lv.35   │  │
@@ -376,7 +377,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 │                                          │
 │  ┌────────────────────────────────────┐  │
 │  │  🎬 광고 보상 2배!                │  │
-│  │  골드 443,088 → 886,176           │  │
+│  │  골드 1,140,624 → 2,281,248       │  │
 │  │  구슬 12 → 24                     │  │
 │  │                                    │  │
 │  │     [ 광고 시청하기 (30초) ]       │  │
@@ -388,7 +389,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 └──────────────────────────────────────────┘
 ```
 
-### 6.2 UI 요소 상세
+### 6-2. UI 요소 상세
 
 | 요소 | 사양 | 비고 |
 |------|------|------|
@@ -402,7 +403,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 | 기본 수령 버튼 | 크기: 너비 40%, 높이 48px | 회색 배경, 텍스트 약간 작게 |
 | 레벨업 표시 | 레벨업 발생 시에만 표시 | 별 이펙트 애니메이션 |
 
-### 6.3 애니메이션/연출 시퀀스
+### 6-3. 애니메이션/연출 시퀀스
 
 1. **팝업 등장** (0.3초): Scale 0 → 1, EaseOutBack 애니메이션
 2. **오프라인 시간 카운트업** (0.5초): 0 → 실제 시간까지 숫자 올라가는 애니메이션
@@ -416,7 +417,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 
 총 연출 시간: 약 1.5~2초
 
-### 6.4 팝업 표시 조건
+### 6-4. 팝업 표시 조건
 
 | 조건 | 팝업 표시 |
 |------|-----------|
@@ -425,7 +426,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 | 오프라인 시간 0 또는 음수 | X (비정상 상태) |
 | 총 보상이 0 | X (표시할 내용 없음) |
 
-### 6.5 토스트 메시지 (5분 미만 오프라인)
+### 6-5. 토스트 메시지 (5분 미만 오프라인)
 
 짧은 오프라인에서는 팝업 대신 화면 상단에 토스트 메시지를 표시한다.
 
@@ -441,7 +442,7 @@ float offlineExp = expPerSecond * clampedSeconds * 0.4f;
 
 ## 7. 광고 보상 설계
 
-### 7.1 2배 보상 메커니즘
+### 7-1. 2배 보상 메커니즘
 
 광고 시청 시 오프라인 보상 전체에 2배 승수를 적용한다.
 
@@ -457,7 +458,7 @@ void ApplyAdBonus()
 
 > **핵심:** 광고 시청 시 오프라인 효율이 골드 기준 50% → 100%로 올라가, 온라인 플레이와 동등한 수준이 된다. 이는 "광고를 보면 내가 직접 플레이한 것과 같다"는 강력한 인센티브가 된다.
 
-### 7.2 광고 빈도 제한
+### 7-2. 광고 빈도 제한
 
 | 제한 항목 | 값 | 근거 |
 |-----------|------|------|
@@ -466,7 +467,7 @@ void ApplyAdBonus()
 | 광고 간 최소 간격 | 3분 | 연속 시청 방지 |
 | 광고 쿨타임 표시 | 남은 시간 카운트다운 | UX 명확성 |
 
-### 7.3 광고 시청 패턴별 시나리오 분석
+### 7-3. 광고 시청 패턴별 시나리오 분석
 
 #### 시나리오 A: 매번 광고를 시청하는 유저
 
@@ -498,7 +499,7 @@ void ApplyAdBonus()
 → 가장 일반적인 패턴, 밸런스 기준점
 ```
 
-### 7.4 광고 실패 처리
+### 7-4. 광고 실패 처리
 
 | 상황 | 처리 |
 |------|------|
@@ -507,7 +508,7 @@ void ApplyAdBonus()
 | 광고 SDK 미초기화 | 광고 버튼 숨김, 기본 보상만 표시 |
 | 광고 캐싱 | 앱 시작 시 광고 사전 로드 (복귀 팝업 즉시 표시를 위해) |
 
-### 7.5 광고 SDK 연동 (AdMob)
+### 7-5. 광고 SDK 연동 (AdMob)
 
 ```csharp
 // 광고 사전 로드 (앱 시작 시)
@@ -544,7 +545,7 @@ private void OnAdRewarded(Reward reward)
 
 ## 8. 자동 전투 최적화
 
-### 8.1 시뮬레이션 모드 개요
+### 8-1. 시뮬레이션 모드 개요
 
 앱이 최소화 상태일 때, 실제 전투를 렌더링하지 않고 수학적으로 시뮬레이션한다.
 
@@ -558,7 +559,7 @@ UI 업데이트             →      생략
 오디오                  →      음소거
 ```
 
-### 8.2 간소화 전투 시뮬레이션 로직
+### 8-2. 간소화 전투 시뮬레이션 로직
 
 ```csharp
 public class SimplifiedCombatSimulator
@@ -625,7 +626,7 @@ public class SimplifiedCombatSimulator
 }
 ```
 
-### 8.3 렌더링 스킵 로직
+### 8-3. 렌더링 스킵 로직
 
 ```csharp
 void OnApplicationPause(bool isPaused)
@@ -689,7 +690,7 @@ void OnApplicationPause(bool isPaused)
 }
 ```
 
-### 8.4 시뮬레이션 vs 오프라인 계산 비교
+### 8-4. 시뮬레이션 vs 오프라인 계산 비교
 
 | 항목 | 최소화 시뮬레이션 | 오프라인 계산 |
 |------|-------------------|---------------|
@@ -700,7 +701,7 @@ void OnApplicationPause(bool isPaused)
 | 효율 계수 | 80% | 50% |
 | 보상 종류 | 골드, 구슬, 경험치, 아이템 드랍 | 골드, 구슬, 경험치 (아이템 X) |
 
-### 8.5 DPS 파워 게이트 (진행 제한)
+### 8-5. DPS 파워 게이트 (진행 제한)
 
 시뮬레이션 중 DPS가 현재 스테이지 몬스터를 처치하기에 부족한 경우를 처리한다.
 
@@ -720,11 +721,11 @@ if (clearTime > MAX_ROOM_CLEAR_TIME)
 
 ## 9. 배터리 절약 모드
 
-### 9.1 설계 목표
+### 9-1. 설계 목표
 
 방치형 게임의 특성상 장시간 화면을 켜둔 채로 방치하는 유저가 많다. 배터리 소모를 줄여 유저 경험을 개선한다.
 
-### 9.2 모드 사양
+### 9-2. 모드 사양
 
 | 항목 | 일반 모드 | 배터리 절약 모드 |
 |------|-----------|-----------------|
@@ -738,7 +739,7 @@ if (clearTime > MAX_ROOM_CLEAR_TIME)
 | 음질 | 고품질 | 저품질 (모노) |
 | 예상 배터리 절약 | 기준 | 약 30~40% 감소 |
 
-### 9.3 자동 제안 시스템
+### 9-3. 자동 제안 시스템
 
 배터리 절약 모드를 다음 조건에서 자동으로 제안한다.
 
@@ -770,7 +771,7 @@ void CheckBatterySavingSuggestion()
 }
 ```
 
-### 9.4 제안 팝업
+### 9-4. 제안 팝업
 
 ```
 ┌────────────────────────────────────┐
@@ -789,7 +790,7 @@ void CheckBatterySavingSuggestion()
 └────────────────────────────────────┘
 ```
 
-### 9.5 구현 코드
+### 9-5. 구현 코드
 
 ```csharp
 public class BatterySavingManager : MonoBehaviour
@@ -829,7 +830,7 @@ public class BatterySavingManager : MonoBehaviour
 }
 ```
 
-### 9.6 설정 메뉴 연동
+### 9-6. 설정 메뉴 연동
 
 설정 화면에 배터리 절약 모드 토글을 배치한다.
 
@@ -849,7 +850,7 @@ public class BatterySavingManager : MonoBehaviour
 
 ## 10. 푸시 알림 시스템
 
-### 10.1 알림 종류
+### 10-1. 알림 종류
 
 | ID | 트리거 | 제목 | 내용 | 발송 시점 |
 |----|--------|------|------|-----------|
@@ -859,7 +860,7 @@ public class BatterySavingManager : MonoBehaviour
 | `COMEBACK` | 3일 미접속 | "돌아와 주세요!" | "특별 복귀 보상을 준비했어요. 지금 접속하세요!" | 마지막 접속 + 72시간 |
 | `WEEKLY` | 7일 미접속 | "용사님, 보고 싶었어요" | "7일간의 특별 복귀 패키지가 기다리고 있습니다!" | 마지막 접속 + 168시간 |
 
-### 10.2 알림 스케줄링
+### 10-2. 알림 스케줄링
 
 앱 종료 또는 최소화 시점에 로컬 푸시 알림을 스케줄링한다. (서버 불필요)
 
@@ -927,7 +928,7 @@ public class PushNotificationScheduler
 }
 ```
 
-### 10.3 알림 빈도 제한
+### 10-3. 알림 빈도 제한
 
 | 규칙 | 설명 |
 |------|------|
@@ -937,7 +938,7 @@ public class PushNotificationScheduler
 | 앱 접속 시 자동 취소 | 앱 복귀 시 모든 예약 알림 취소 후 재스케줄링 |
 | 사용자 설정 존중 | 설정에서 알림 OFF 시 스케줄링하지 않음 |
 
-### 10.4 Android 알림 채널 설정
+### 10-4. Android 알림 채널 설정
 
 ```csharp
 // Android 8.0+ 알림 채널 생성
@@ -969,7 +970,7 @@ void CreateNotificationChannels()
 }
 ```
 
-### 10.5 알림 텍스트 다양화
+### 10-5. 알림 텍스트 다양화
 
 같은 종류의 알림이라도 반복 시 지루해지지 않도록 텍스트를 랜덤 선택한다.
 
@@ -988,7 +989,7 @@ private string[] rewardFullMessages = {
 
 ## 11. 저장/로드 시스템
 
-### 11.1 데이터 저장 전략
+### 11-1. 데이터 저장 전략
 
 게임 데이터는 두 가지 저장소를 사용한다.
 
@@ -997,7 +998,7 @@ private string[] rewardFullMessages = {
 | **PlayerPrefs** | 빠른 접근, 시간 기록 | lastPlayTime, 설정값 |
 | **JSON 파일** | 전체 게임 상태 | 캐릭터, 인벤토리, 스테이지, 재화 등 |
 
-### 11.2 PlayerPrefs 필드
+### 11-2. PlayerPrefs 필드
 
 | 키 | 타입 | 설명 | 예시 값 |
 |----|------|------|---------|
@@ -1013,7 +1014,7 @@ private string[] rewardFullMessages = {
 | `AdWatchCount` | int | 오늘 광고 시청 횟수 | `3` |
 | `AdWatchDate` | string | 광고 횟수 초기화 기준 날짜 | `"2026-03-31"` |
 
-### 11.3 JSON 저장 구조
+### 11-3. JSON 저장 구조
 
 ```json
 {
@@ -1096,7 +1097,7 @@ private string[] rewardFullMessages = {
     },
 
     "idle": {
-        "lastCalculatedGoldPerSecond": 30.77,
+        "lastCalculatedGoldPerSecond": 79.21,
         "offlineMaxSeconds": 43200,
         "offlineEfficiency": 0.54,
         "totalOfflineGoldEarned": 5678900,
@@ -1119,7 +1120,7 @@ private string[] rewardFullMessages = {
 }
 ```
 
-### 11.4 저장 빈도
+### 11-4. 저장 빈도
 
 | 트리거 | 저장 대상 | 비고 |
 |--------|-----------|------|
@@ -1131,7 +1132,7 @@ private string[] rewardFullMessages = {
 | 주기적 자동 저장 | JSON 전체 | 60초 간격 |
 | 광고 보상 수령 시 | JSON 전체 | 보상 손실 방지 |
 
-### 11.5 저장/로드 코드
+### 11-5. 저장/로드 코드
 
 ```csharp
 public class SaveManager : MonoBehaviour
@@ -1241,7 +1242,7 @@ public class SaveManager : MonoBehaviour
 }
 ```
 
-### 11.6 데이터 유효성 검증
+### 11-6. 데이터 유효성 검증
 
 로드 시 다음 항목을 검증하여 비정상 데이터를 방지한다.
 
@@ -1283,7 +1284,7 @@ private bool ValidateData(GameData data)
 }
 ```
 
-### 11.7 시간 조작 방지 (Anti-Cheat)
+### 11-7. 시간 조작 방지 (Anti-Cheat)
 
 #### 위협 모델
 
@@ -1427,7 +1428,7 @@ private bool ValidateChecksum(GameData data, string fullJson)
 }
 ```
 
-### 11.8 저장 데이터 마이그레이션
+### 11-8. 저장 데이터 마이그레이션
 
 게임 업데이트로 저장 구조가 변경될 때를 대비한 마이그레이션 시스템이다.
 
@@ -1472,7 +1473,7 @@ public class SaveMigrator
 }
 ```
 
-### 11.9 저장 실패 복구 전략
+### 11-9. 저장 실패 복구 전략
 
 | 상황 | 복구 전략 |
 |------|-----------|
@@ -1574,4 +1575,5 @@ public void SafeWriteFile(string targetPath, string content)
 
 | 버전 | 날짜 | 내용 |
 |------|------|------|
-| 1.0 | 2026-03-31 | 초기 설계 문서 작성 |
+| 1.0 | 2026-03-31 | 초안 작성 |
+| 1.1 | 2026-03-31 | 코어 루프 정합 (골드 공식, 몬스터 수, 섹션 번호 포맷 통일) |

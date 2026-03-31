@@ -1,6 +1,9 @@
 # 전생(Prestige) 시스템 설계 문서
 
-> 오른쪽 달리기 - 핵심 리텐션 루프
+> "오른쪽 달리기" (Running Right) - 전생 시스템 상세 설계
+> 작성일: 2026-03-31
+> 버전: 1.0
+> 관련 문서: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
@@ -15,6 +18,7 @@
 7. [전생 연출](#7-전생-연출)
 8. [리셋 범위 명세](#8-리셋-범위-명세)
 9. [다중 전생 계층 (각성 시스템)](#9-다중-전생-계층-각성-시스템)
+10. [ScriptableObject 스키마](#10-scriptableobject-스키마)
 
 ---
 
@@ -719,9 +723,15 @@ Phase 5: 반복... (이론적 무한)
 
 ---
 
-## 부록: 밸런스 상수 요약
+## 10. ScriptableObject 스키마
 
-### A. 몬스터 스케일링 (참고)
+ScriptableObject 스키마는 부록 C 참조.
+
+---
+
+## 부록 A: 밸런스 상수 요약
+
+### A-1. 몬스터 스케일링 (참고)
 
 ```
 MonsterHP(stage) = BaseHP * (1 + stage * 0.15)
@@ -729,7 +739,7 @@ MonsterATK(stage) = BaseATK * (1 + stage * 0.10)
 MonsterGold(stage) = BaseGold * (1 + stage * 0.12)
 ```
 
-### B. 전생 관련 공식 모음
+### A-2. 전생 관련 공식 모음
 
 ```
 // 전생석 획득
@@ -755,10 +765,10 @@ StartingGold = inheritanceLevel * 500
 AwakeningPoints = floor( (totalRebirths * highestStage) / 500 )
 ```
 
-### C. ScriptableObject 데이터 구조 (구현 참고)
+## 부록 B: ScriptableObject 데이터 구조 (구현 참고)
 
 ```csharp
-[CreateAssetMenu(fileName = "PrestigeUpgrade", menuName = "Data/PrestigeUpgrade")]
+[CreateAssetMenu(fileName = "PrestigeUpgrade", menuName = "RunningRight/PrestigeUpgrade")]
 public class PrestigeUpgradeSO : ScriptableObject
 {
     public string upgradeName;        // 업그레이드 이름
@@ -779,7 +789,7 @@ public enum StatType { ATK, CRIT_RATE, CRIT_DMG, ATK_SPEED, MOVE_SPEED,
                        OfflineEfficiency, AutoUpgrade }
 ```
 
-### D. 저장 데이터 구조 (구현 참고)
+## 부록 C: 저장 데이터 구조 (구현 참고)
 
 ```csharp
 [System.Serializable]
@@ -804,7 +814,9 @@ public class PrestigeSaveData
 
 ---
 
-> **문서 버전**: v1.0
-> **작성일**: 2026-03-31
-> **관련 문서**: [MASTER_PLAN.md](../../MASTER_PLAN.md), [CLAUDE.md](../../CLAUDE.md)
-> **Phase**: Phase 3 (성장 시스템)에서 구현 예정
+## 변경 이력
+
+| 버전 | 날짜 | 내용 |
+|------|------|------|
+| 1.0 | 2026-03-31 | 초안 작성 |
+| 1.1 | 2026-03-31 | 포맷 표준화 |

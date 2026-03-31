@@ -81,7 +81,7 @@ Assets/
 StageManager
 ├── currentStage (int)     # 현재 스테이지 번호
 ├── currentRoom (int)      # 현재 방 번호
-├── roomsPerStage          # 스테이지당 방 수 (2~3방, 코어 루프 기획서 참조)
+├── roomsPerStage          # 스테이지당 방 수: min(5 + floor(stage/20), 8)
 ├── OnRoomClear()          # 방 클리어 시 다음 방 생성
 └── OnStageClear()         # 구슬 파괴 시 스테이지 번호++, 난이도 상승
 ```
@@ -111,7 +111,7 @@ CharacterStats (ScriptableObject)
 ### 2-2. 스킬 시스템
 - 자동 시전 스킬 (쿨타임 기반)
 - 스킬 종류 (DNF 패러디):
-  - **기본 평타 콤보** (3~4타)
+  - **기본 평타 콤보** (4타)
   - **범위 스킬** (몬스터 다수 타격, 쓸어버리는 쾌감)
   - **궁극기** (화면 전체 or 넓은 범위, 긴 쿨타임)
 - 각 스킬은 ScriptableObject로 정의
@@ -123,11 +123,11 @@ CharacterStats (ScriptableObject)
 - 스테이지에 따라 HP/공격력 스케일링 공식:
 
 ```
-MonsterHP = BaseHP * (1 + (stage - 1) * 0.15)  // stage 1-indexed, Stage 1 = BaseHP
+MonsterHP = BaseHP * (1 + stage * 0.15)
 ```
 
 ### 2-4. 타격감 연출
-- 히트스톱 (상황별 0.05~0.12초, 코어 루프 기획서 참조)
+- 히트스톱 (상황별 0.02~0.3초)
 - 카메라 셰이크 (스킬/궁극기 시)
 - 파티클 이펙트 (타격, 치명타, 스킬)
 - 데미지 폰트 (일반: 흰색, 치명타: 노란색+크게)
@@ -166,8 +166,8 @@ PlayerPrefs.SetString("LastPlayTime", DateTime.UtcNow.ToString());
 
 // 앱 재시작 시 경과 시간 계산
 TimeSpan offlineDuration = DateTime.UtcNow - lastPlayTime;
-float offlineGold = goldPerSecond * offlineDuration.TotalSeconds * 0.25f;
-// 0.25 = 오프라인 효율 (코어 루프 기획서 참조)
+float offlineGold = goldPerSecond * offlineDuration.TotalSeconds * 0.50f;
+// 0.50 = 오프라인 효율 (50%)
 ```
 
 ### 4-2. 자동 전투 최적화
@@ -216,9 +216,9 @@ float offlineGold = goldPerSecond * offlineDuration.TotalSeconds * 0.25f;
 | 에셋 | 설명 |
 |------|------|
 | 캐릭터 스프라이트 | 달리기/공격/스킬 애니메이션 (DNF 도트풍 or 패러디풍) |
-| 몬스터 스프라이트 | 일반 3~5종, 정예 2~3종 |
+| 몬스터 스프라이트 | 일반 5종, 정예 3종 |
 | 개 얼굴 구슬 | 보스 오브젝트 (아이콘적 존재) |
-| 배경 타일 | 던전 배경 2~3종 (반복 스크롤) |
+| 배경 타일 | 배경 타일 5종 (던전 테마별 순환) |
 | UI 에셋 | 버튼, 패널, 아이콘 |
 | 이펙트 | 타격, 스킬, 파괴 파티클 |
 
@@ -282,3 +282,9 @@ Phase 8  ████                         1주   빌드/출시
 2. 아트는 **임시 에셋**(사각형, 원)으로 시작하고 나중에 교체
 3. Phase 1 완성 후 직접 플레이하며 **"호쾌함"이 느껴지는지** 검증
 4. 방치형 시스템은 코어 전투가 확정된 후 붙이기
+
+---
+
+## 참고 문서
+
+상세 설계는 `docs/design/` 하위 문서 참조
