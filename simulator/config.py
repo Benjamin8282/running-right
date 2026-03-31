@@ -129,8 +129,8 @@ EQUIPMENT_SELL_PRICE = {
 # === 오프라인 ===
 OFFLINE = {
     "max_hours": 8,
-    "efficiency": 0.1,
-    "death_fallback_efficiency": 0.05,
+    "efficiency": 0.25,
+    "death_fallback_efficiency": 0.1,
 }
 
 

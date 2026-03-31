@@ -166,8 +166,8 @@ PlayerPrefs.SetString("LastPlayTime", DateTime.UtcNow.ToString());
 
 // 앱 재시작 시 경과 시간 계산
 TimeSpan offlineDuration = DateTime.UtcNow - lastPlayTime;
-float offlineGold = goldPerSecond * offlineDuration.TotalSeconds * 0.5f;
-// 0.5 = 오프라인 효율 (밸런스 조절용)
+float offlineGold = goldPerSecond * offlineDuration.TotalSeconds * 0.25f;
+// 0.25 = 오프라인 효율 (코어 루프 기획서 참조)
 ```
 
 ### 4-2. 자동 전투 최적화
